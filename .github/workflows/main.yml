@@ -83,19 +83,10 @@ jobs:
           echo "Release files:"
           ls -la release-files
 
-      - name: Delete existing release (if any)
+      - name: Create or update GitHub Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete "${{ needs.electron-build.outputs.appVersion }}" --yes --cleanup-tag 2>/dev/null || echo "No existing release to delete"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.electron-build.outputs.appVersion }}
-          name: Release ${{ needs.electron-build.outputs.appVersion }}
-          files: release-files/*
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION="${{ needs.electron-build.outputs.appVersion }}"
+          gh release delete "$VERSION" --yes --cleanup-tag 2>/dev/null && sleep 3 || true
+          gh release create "$VERSION" release-files/* --title "Release $VERSION" --notes "Release $VERSION"
