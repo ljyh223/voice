@@ -85,10 +85,16 @@ jobs:
           echo "Release files:"
           ls -la release-files
 
-      - name: Create or update GitHub Release
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ needs.electron-build.outputs.appVersion }}"
-          gh release delete "$VERSION" --yes --cleanup-tag 2>/dev/null && sleep 3 || true
-          gh release create "$VERSION" release-files/* --title "Release $VERSION" --notes "Release $VERSION"
+          # Delete old release and tag (if any)
+          gh release delete "$VERSION" --yes --cleanup-tag 2>/dev/null || true
+          sleep 3
+          # Create fresh release with all assets
+          gh release create "$VERSION" release-files/* \
+            --title "Release $VERSION" \
+            --notes "Release $VERSION" \
+            --target "$GITHUB_SHA"
