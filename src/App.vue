@@ -16,13 +16,13 @@
     <!-- Main content -->
     <div v-show="mainState.loadingCompleted" style="width: 100%; height: 730px; display: flex;">
       <!-- Sidebar -->
-      <div style="width: 17%;scroll-behavior: smooth; scroll-padding-top: 5rem;height: 730px;overflow-y: hidden;background-color: rgba(255,255,255,0); border-right: 1px solid rgba(255,255,255,0.3);">
+      <div style="min-width: 250px; width: 250px; flex-shrink: 0; scroll-behavior: smooth; scroll-padding-top: 5rem; height: 730px; overflow-y: auto; overflow-x: hidden; background-color: rgba(255,255,255,0); border-right: 1px solid rgba(255,255,255,0.3);">
         <label for="drawer" class="drawer-overlay" aria-label="Close menu"></label>
         <Sidebar />
       </div>
 
       <!-- Content area -->
-      <div class="flex drawer lg:drawer-open" style="height: 730px;flex-direction: column;width: 83%;">
+      <div class="flex drawer lg:drawer-open" style="height: 730px; flex-direction: column; flex: 1; min-width: 0;">
         <input id="drawer" type="checkbox" class="drawer-toggle">
 
         <div class="drawer-content draggable">
@@ -67,18 +67,30 @@ import LocalUploadTab from './components/LocalUploadTab.vue';
 import SettingsTab from './components/SettingsTab.vue';
 import Footer from './components/Footer.vue';
 
-const { mainState, menuState, setTheme, initData, connect_ws, heartbeat, animateAnnouncement } = useAppState();
+const { mainState, menuState, initState, setTheme, initData, connect_ws, heartbeat, animateAnnouncement } = useAppState();
 
 setTheme("light");
 
-mainState.isLoading = false;
-mainState.loadingCompleted = true;
+const getSystemTheme = () => {
+  return window.matchMedia("(prefers-color-scheme: dim)").matches ? "dim" : "light";
+};
+
+let currentSlide = 1;
 
 onMounted(async () => {
+  mainState.checkboxValue = getSystemTheme() === "dim";
   connect_ws();
   heartbeat();
   initData().then(() => {
     animateAnnouncement();
+    setInterval(() => {
+      currentSlide++;
+      if (currentSlide > initState.carousel.length) {
+        currentSlide = 1;
+      }
+      let slideId = "#slide" + currentSlide;
+      window.location.href = slideId;
+    }, 10000);
     mainState.isLoading = false;
   });
 });

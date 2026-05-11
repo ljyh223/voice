@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -6,12 +6,16 @@ if (started) {
   app.quit();
 }
 
+Menu.setApplicationMenu(null);
+
 const isDev = !!MAIN_WINDOW_VITE_DEV_SERVER_URL;
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 800,
+    minWidth: 1050,
+    minHeight: 750,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       devTools: isDev,

@@ -296,7 +296,7 @@ const downloadCloudModel = (model) => { sendOrder("downloadModel", model); mainS
 
 const useCloudModel = (model) => {
   if (mainState.isLoading) return;
-  if (!isVerify.value) return void (openCheck.value = true);
+  if (!isVerify.value) return showCheckDialog();
   if (initState.cloud_model.includes(`${model.name}.pth`)) {
     mainState.templateType = "cloud"; mainState.template = model.name;
     mainState.templateCategory = model.category; mainState.templateImg = model.image_url;
@@ -547,18 +547,30 @@ const payment = () => {
 
 const createIntervalForOrder = (orderId) => {
   let secondsPassed = 0;
-  return setInterval(() => {
-    if (secondsPassed >= 60000) { delete mainState.paymentCheckObj[orderId]; clearInterval(mainState.paymentCheckObj[orderId]); }
-    else { secondsPassed += 1000; sendOrder("checkPayment", orderId); }
+  const intervalId = setInterval(() => {
+    if (secondsPassed >= 60000) {
+      delete mainState.paymentCheckObj[orderId];
+      clearInterval(intervalId);
+    } else {
+      secondsPassed += 1000;
+      sendOrder("checkPayment", orderId);
+    }
   }, 1000);
+  return intervalId;
 };
 
 const createIntervalForLogin = () => {
   let secondsPassed = 0;
-  return setInterval(() => {
-    if (secondsPassed >= 60000) { mainState.loginTimeout = true; clearInterval(mainState.loginIntervalId); }
-    else { secondsPassed += 2000; sendOrder("checkLogin"); }
+  const intervalId = setInterval(() => {
+    if (secondsPassed >= 60000) {
+      mainState.loginTimeout = true;
+      clearInterval(intervalId);
+    } else {
+      secondsPassed += 2000;
+      sendOrder("checkLogin");
+    }
   }, 2000);
+  return intervalId;
 };
 
 const createIntervalForLoginState = () => setInterval(() => sendOrder("LoginState"), 300000);
