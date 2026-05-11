@@ -89,12 +89,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -e
           VERSION="${{ needs.electron-build.outputs.appVersion }}"
-          # Delete old release and tag (if any)
-          gh release delete "$VERSION" --yes --cleanup-tag 2>/dev/null || true
+          echo "=== Creating release for version: $VERSION ==="
+          echo "Files to upload:"
+          ls -la release-files/
+
+          # Remove old release (ignore errors)
+          gh release delete "$VERSION" --yes 2>/dev/null && echo "Old release deleted" || echo "No existing release"
+
+          # Remove old remote tag (ignore errors)  
+          git push origin --delete "$VERSION" 2>/dev/null && echo "Old tag deleted" || echo "No existing tag"
+
           sleep 3
-          # Create fresh release with all assets
+
+          # Create release
           gh release create "$VERSION" release-files/* \
             --title "Release $VERSION" \
-            --notes "Release $VERSION" \
-            --target "$GITHUB_SHA"
+            --generate-notes
+
+          echo "=== Release created successfully ==="
