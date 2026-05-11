@@ -1,0 +1,95 @@
+name: 'publish'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - '*.*.*'
+
+jobs:
+  electron-build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    outputs:
+      appVersion: ${{ steps.extract-version.outputs.appVersion }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Electron App
+        run: npx electron-forge make --platform=win32 --arch=x64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect artifacts
+        run: |
+          New-Item -ItemType Directory -Path dist-temp -Force | Out-Null
+          Get-ChildItem -Path out/make -Recurse -File | Where-Object {
+            $_.Name -like "*.exe" -or $_.Name -like "*.msi" -or $_.Name -like "*.zip" -or $_.Name -like "*.nupkg"
+          } | Copy-Item -Destination dist-temp/
+          if (-not (Get-ChildItem -Path dist-temp)) {
+            Write-Host "Warning: no matching artifacts found, copying all files"
+            Get-ChildItem -Path out/make -Recurse -File | Copy-Item -Destination dist-temp/
+          }
+          Write-Host "Artifact files:"
+          Get-ChildItem -Path dist-temp
+
+      - name: Extract version
+        id: extract-version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "appVersion=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: dist-temp/*
+          if-no-files-found: warn
+
+  electron-release:
+    needs: electron-build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find artifacts -type f -exec cp {} release-files/ \;
+          echo "Release files:"
+          ls -la release-files
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.electron-build.outputs.appVersion }}
+          name: Release ${{ needs.electron-build.outputs.appVersion }}
+          files: release-files/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
